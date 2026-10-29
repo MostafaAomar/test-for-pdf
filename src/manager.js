@@ -138,6 +138,16 @@ function saveCatalogLocal() {
   writeJsonStorage(CATALOG_KEY, catalog);
   setSaveStatus('تم حفظ التغييرات محليًا');
   renderMaterialsList();
+  fetch('/api/save-catalog', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(catalog, null, 2)
+  }).then((res) => {
+    if (res.ok) {
+      setSaveStatus('تم الحفظ في ملف index.json على القرص بنجاح');
+      showToast('تم تحديث ملف lessons/index.json على القرص مباشرة بنجاح!', 'success');
+    }
+  }).catch(() => {});
 }
 
 function fillSelect(select, items, placeholder, selected = '') {
@@ -274,7 +284,6 @@ function attachHierarchy(hierarchy) {
 }
 function getAudioUrlsFromForm() {
   return $('#audio-urls').value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((url) => {
-    if (!looksLikeUrl(url)) throw new Error(`رابط الصوت غير صالح: ${url}`);
     return normalizeResourceUrl(url);
   });
 }
@@ -302,8 +311,7 @@ async function addMaterial(event) {
     const title = $('#lesson-title').value.trim();
     if (!title) throw new Error('اكتب اسم الدرس.');
     const pdfUrlInput = $('#pdf-url').value.trim();
-    if (!pdfUrlInput) throw new Error('ألصق رابط ملف PDF أولًا. لا يتم رفع الملفات من هذه الصفحة.');
-    if (!looksLikeUrl(pdfUrlInput)) throw new Error('رابط PDF غير صحيح؛ يجب أن يبدأ بـ https:// أو http://.');
+    if (!pdfUrlInput) throw new Error('يرجى تحديد ملف أو مسار أو رابط PDF.');
     const audioUrls = getAudioUrlsFromForm();
     const hierarchy = makeNewHierarchy(
       $('#subject-select').value, $('#subject-new').value,
@@ -446,6 +454,44 @@ function bindEvents() {
   $('#save-drive-settings')?.addEventListener('click', () => saveDriveSettings(true));
   $('#google-api-key')?.addEventListener('change', () => saveDriveSettings(false));
   $('#download-catalog').addEventListener('click', downloadCatalog);
+  $('#pdf-file-picker')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const info = $('#pdf-file-info');
+    if (info) info.textContent = `جارٍ تجهيز ملف PDF: ${file.name}...`;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const fileData = String(reader.result);
+        let savedUrl = '';
+        try {
+          const res = await fetch('/api/upload-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName: file.name, fileData, subfolder: 'uploads' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            savedUrl = data.url;
+          }
+        } catch (_) {}
+
+        if (savedUrl) {
+          $('#pdf-url').value = savedUrl;
+          if (info) info.textContent = `✓ تم حفظ الملف محليًا: ${savedUrl}`;
+          showToast(`تم حفظ ملف PDF (${file.name}) بنجاح!`, 'success');
+        } else {
+          $('#pdf-url').value = `lessons/uploads/${file.name}`;
+          if (info) info.textContent = `تم تحديد: ${file.name} (تأكد من وضعه في مجلد lessons/uploads/)`;
+        }
+        scheduleDraftSave();
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      if (info) info.textContent = 'تعذّر قراءة الملف.';
+    }
+  });
 }
 
 async function boot() {

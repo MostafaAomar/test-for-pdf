@@ -76,13 +76,20 @@
         </div>
 
         <div class="resource-block">
-          <div class="resource-heading"><span class="resource-icon">PDF</span><div><h3>ملف الكتاب أو الدرس</h3><p>الصق رابط PDF من Google Drive أو GitHub أو استضافة ملفات خارجية.</p></div></div>
+          <div class="resource-heading"><span class="resource-icon">PDF</span><div><h3>ملف الكتاب أو الدرس</h3><p>اختر ملف PDF من جهازك أو اكتب مساره أو الصق رابطه.</p></div></div>
           <div class="form-grid resource-fields">
-            <label class="field field-wide">رابط PDF
-              <input id="pdf-url" type="url" inputmode="url" required placeholder="https://github.com/user/repo/blob/main/lesson.pdf أو رابط Drive">
+            <label class="field field-wide">ملف أو رابط PDF
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input id="pdf-url" type="text" required placeholder="مثال: lesson.pdf أو lessons/my-book/book.pdf أو رابط مباشر https://..." style="flex: 1;">
+                <label class="button button-muted" style="cursor: pointer; white-space: nowrap; margin: 0; min-height: 45px;">
+                  📁 اختر ملف PDF
+                  <input type="file" id="pdf-file-picker" accept=".pdf,application/pdf" style="display: none;">
+                </label>
+              </div>
+              <small id="pdf-file-info" style="color: var(--muted); margin-top: 4px; display: block;"></small>
             </label>
           </div>
-          <p class="field-help">لا يتم نسخ PDF إلى مستودع التطبيق. احفظه أولًا في مكان خارجي ثم ألصق رابطه. لكي يظهر PDF داخل العارض مع الأنشطة فوق صفحاته، يجب أن يسمح مصدر الملف بطلبات المتصفح (CORS). روابط GitHub ذات صيغة blob يحوّلها التطبيق تلقائيًا إلى raw؛ روابط Google Drive قد تحتاج المفتاح الاختياري أعلاه.</p>
+          <p class="field-help">يمكنك اختيار ملف PDF من جهازك (سيتم حفظه تلقائيًا في مجلد lessons عند تشغيل الخادم المحلي)، أو كتابة مسار محلي، أو لصق رابط مباشر.</p>
         </div>
 
         <div class="resource-block">

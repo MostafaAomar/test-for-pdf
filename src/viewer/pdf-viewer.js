@@ -246,6 +246,10 @@ export class PdfViewer {
           await this.toggleMarkerAudio(activity, button);
           return;
         }
+        if (activity.type === 'read_aloud' && (activity.text || activity.prompt)) {
+          this.toggleReadAloud(activity, button);
+          return;
+        }
         this.onActivate?.(activity, this.currentPage);
       });
       layer.append(button);
@@ -526,6 +530,51 @@ export class PdfViewer {
       button.innerHTML = '<span class="marker-icon" aria-hidden="true">▶</span><span class="marker-done" aria-hidden="true"></span>';
       this.onToast?.('لم يبدأ تشغيل الصوت. جرّب الضغط على زر التشغيل مرة أخرى.');
     }
+  }
+
+  toggleReadAloud(activity, button) {
+    if (!('speechSynthesis' in window)) {
+      this.onActivate?.(activity, this.currentPage);
+      return;
+    }
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      if (this.currentSpeechButton === button) {
+        button.classList.remove('playing');
+        button.innerHTML = '<span class="marker-icon" aria-hidden="true">🔊</span>';
+        this.currentSpeechButton = null;
+        return;
+      }
+    }
+    if (this.currentSpeechButton) {
+      this.currentSpeechButton.classList.remove('playing');
+      this.currentSpeechButton.innerHTML = '<span class="marker-icon" aria-hidden="true">🔊</span>';
+    }
+    const currentLang = this.getLanguage?.() || 'ar';
+    const textToRead = typeof activity.text === 'string' ? activity.text : (activity.text?.[currentLang] || activity.text?.ar || activity.text?.en || activity.prompt?.[currentLang] || activity.prompt?.ar || '');
+    if (!textToRead) {
+      this.onActivate?.(activity, this.currentPage);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = currentLang === 'ar' ? 'ar-SA' : currentLang === 'fr' ? 'fr-FR' : 'en-US';
+    button.classList.add('playing');
+    button.innerHTML = '<span class="marker-icon" aria-hidden="true">Ⅱ</span>';
+    this.currentSpeechButton = button;
+    utterance.onend = () => {
+      button.classList.remove('playing');
+      button.classList.add('done');
+      button.innerHTML = '<span class="marker-icon" aria-hidden="true">🔊</span><span class="marker-done" aria-hidden="true">✓</span>';
+      this.currentSpeechButton = null;
+      this.onAudioPlayed?.(activity);
+    };
+    utterance.onerror = () => {
+      button.classList.remove('playing');
+      button.innerHTML = '<span class="marker-icon" aria-hidden="true">🔊</span>';
+      this.currentSpeechButton = null;
+    };
+    window.speechSynthesis.speak(utterance);
+    this.onToast?.(`🔊 قراءة: "${textToRead.slice(0, 40)}${textToRead.length > 40 ? '...' : ''}"`);
   }
   async zoomBy(delta) {
     this.zoom = Math.min(2.1, Math.max(.65, Math.round((this.zoom + delta) * 100) / 100));

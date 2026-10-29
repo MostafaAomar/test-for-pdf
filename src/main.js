@@ -67,7 +67,15 @@ function markDeveloperSaved() {
   if (badge) { badge.textContent = 'تم حفظ الإعدادات'; badge.classList.remove('is-dirty'); }
 }
 function activeLessonPage(pageNumber = currentViewer?.currentPage || 1) {
-  return currentLesson?.pages?.find((page) => Number(page.number) === Number(pageNumber));
+  if (!currentLesson) return null;
+  currentLesson.pages ||= [];
+  let page = currentLesson.pages.find((p) => Number(p.number) === Number(pageNumber));
+  if (!page) {
+    page = { number: Number(pageNumber), label: `الصفحة ${pageNumber}`, activities: [] };
+    currentLesson.pages.push(page);
+    currentLesson.pages.sort((a, b) => Number(a.number) - Number(b.number));
+  }
+  return page;
 }
 function getDeveloperActivity(id = activeDeveloperActivityId) {
   return currentLesson?.pages?.flatMap((page) => page.activities || []).find((activity) => activity.id === id) || null;
@@ -303,15 +311,30 @@ function wireDeveloperTools() {
     if (status) status.textContent = 'تمت إزالة الملف الصوتي';
     markDeveloperDirty(); currentViewer?.refreshMarkers();
   });
-  document.querySelector('#developer-save-config')?.addEventListener('click', () => {
+  document.querySelector('#developer-save-config')?.addEventListener('click', async () => {
     saveDeveloperInspectorIfDirty();
     try {
       const portable = stripRuntimeLessonFields(currentLesson);
       localStorage.setItem(lessonConfigKey(currentLesson.id), JSON.stringify(portable));
       markDeveloperSaved();
-      toast('حُفظت إعدادات الدرس على هذا الجهاز. نزّل ملف JSON لنقل الإعدادات إلى جهاز أو خادم آخر.');
+
+      let savedToDisk = false;
+      try {
+        const res = await fetch('/api/save-lesson-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId: currentLesson.id, lessonData: portable })
+        });
+        if (res.ok) savedToDisk = true;
+      } catch (_) {}
+
+      if (savedToDisk) {
+        toast('تم حفظ إعدادات الدرس ومناطقه التفاعلية على القرص مباشرة بنجاح!');
+      } else {
+        toast('حُفظت إعدادات الدرس على هذا الجهاز. نزّل ملف JSON لنقل الإعدادات إلى منصتك.');
+      }
     } catch (error) {
-      toast('تعذّر الحفظ المحلي (قد تكون الملفات الصوتية كبيرة). استخدم «تنزيل ملف الدرس JSON» لحفظ الإعدادات في ملف.');
+      toast('تعذّر الحفظ: ' + (error?.message || error));
     }
   });
   document.querySelector('#developer-export-config')?.addEventListener('click', () => {
