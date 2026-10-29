@@ -1,0 +1,338 @@
+{
+  "id": "sample-lesson",
+  "shortCode": "FRUIT1",
+  "title": "رحلة إلى سلة الفاكهة",
+  "titleTranslations": {
+    "en": "My fruit basket",
+    "fr": "Mon panier de fruits"
+  },
+  "language": "ar",
+  "supportedLanguages": [
+    "ar",
+    "en",
+    "fr"
+  ],
+  "description": "درس تجريبي لتعلّم أسماء الفاكهة بالإنجليزية والفرنسية، مع أنشطة صوتية وأسئلة وتوصيل ورسم.",
+  "descriptionTranslations": {
+    "en": "Learn fruit names in English and French with sound, quiz, matching, writing and drawing activities.",
+    "fr": "Apprends les noms des fruits en anglais et en français avec des activités de son, quiz, association, écriture et dessin."
+  },
+  "pdf": "lesson.pdf",
+  "coverImage": "images/cover.svg",
+  "audioFiles": [
+    "audio/interaction-tone.wav"
+  ],
+  "pages": [
+    {
+      "number": 1,
+      "label": "المفردات",
+      "previewImage": "images/page-1.png",
+      "activities": [
+        {
+          "id": "tone",
+          "type": "audio",
+          "title": "استمع إلى الصوت",
+          "prompt": {
+            "ar": "اضغط لتشغيل الصوت التجريبي. هذا صوت تنبيه وليس تسجيلًا للكلمات.",
+            "en": "Play the locally included demo tone. It is not a spoken recording.",
+            "fr": "Écoute le son de démonstration local. Ce n’est pas une voix enregistrée."
+          },
+          "audio": "audio/interaction-tone.wav",
+          "position": {
+            "x": 5,
+            "y": 13,
+            "w": 34,
+            "h": 7
+          }
+        },
+        {
+          "id": "read-fruits",
+          "type": "read_aloud",
+          "title": "استمع إلى الكلمات",
+          "prompt": {
+            "ar": "استمع إلى أسماء الفاكهة بصوت المتصفح.",
+            "en": "Listen to the fruit names using your browser voice.",
+            "fr": "Écoute les noms des fruits avec la voix du navigateur."
+          },
+          "text": {
+            "ar": "تفاحة، موزة، برتقالة",
+            "en": "Apple, banana, orange.",
+            "fr": "Pomme, banane, orange."
+          },
+          "position": {
+            "x": 5,
+            "y": 22,
+            "w": 34,
+            "h": 7
+          }
+        },
+        {
+          "id": "fruit-quiz",
+          "type": "mcq",
+          "title": "اختر الإجابة",
+          "prompt": {
+            "ar": "أي كلمة تعني «تفاحة» باللغة الإنجليزية؟",
+            "en": "Which word means تفاحة (apple)?",
+            "fr": "Quel mot signifie « pomme » en anglais ?"
+          },
+          "choices": [
+            {
+              "id": "apple",
+              "label": {
+                "ar": "Apple",
+                "en": "Apple",
+                "fr": "Apple"
+              }
+            },
+            {
+              "id": "banana",
+              "label": {
+                "ar": "Banana",
+                "en": "Banana",
+                "fr": "Banana"
+              }
+            },
+            {
+              "id": "orange",
+              "label": {
+                "ar": "Orange",
+                "en": "Orange",
+                "fr": "Orange"
+              }
+            }
+          ],
+          "correctAnswer": "apple",
+          "explanation": {
+            "ar": "أحسنت! Apple تعني تفاحة، وPomme بالفرنسية.",
+            "en": "Correct! Apple means pomme in French.",
+            "fr": "Bravo ! Apple signifie pomme en français."
+          },
+          "position": {
+            "x": 54,
+            "y": 14,
+            "w": 40,
+            "h": 8
+          }
+        },
+        {
+          "id": "write-fruit",
+          "type": "text_answer",
+          "title": "اكتب كلمة",
+          "prompt": {
+            "ar": "اكتب اسم الفاكهة الصفراء باللغة الإنجليزية.",
+            "en": "Write the English name of the yellow fruit.",
+            "fr": "Écris en anglais le nom du fruit jaune."
+          },
+          "placeholder": {
+            "ar": "اكتب الإجابة هنا",
+            "en": "Type your answer",
+            "fr": "Écris ta réponse"
+          },
+          "expectedAnswers": [
+            "banana"
+          ],
+          "explanation": {
+            "ar": "الإجابة هي Banana (موزة).",
+            "en": "The expected answer is banana.",
+            "fr": "La réponse attendue est banana."
+          },
+          "position": {
+            "x": 54,
+            "y": 26,
+            "w": 40,
+            "h": 8
+          }
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "label": "التوصيل",
+      "previewImage": "images/page-2.png",
+      "activities": [
+        {
+          "id": "match-fruit",
+          "type": "matching",
+          "title": "وصّل الصورة بالكلمة",
+          "prompt": {
+            "ar": "اضغط على الصورة أولًا، ثم اضغط على اسم الفاكهة المطابق. سيظهر الخط الأخضر عند الإجابة الصحيحة والأحمر عند الخطأ.",
+            "en": "Tap a picture, then tap its matching word. A green line means correct; red means try again.",
+            "fr": "Appuie sur une image puis sur le mot correspondant. La ligne verte est correcte, la rouge indique une erreur."
+          },
+          "pairs": [
+            {
+              "id": "picture-apple",
+              "left": {
+                "ar": "التفاحة",
+                "en": "Apple picture",
+                "fr": "Image de pomme"
+              },
+              "position": {
+                "x": 13.3,
+                "y": 29.3,
+                "w": 15.5,
+                "h": 8.6
+              }
+            },
+            {
+              "id": "picture-banana",
+              "left": {
+                "ar": "الموزة",
+                "en": "Banana picture",
+                "fr": "Image de banane"
+              },
+              "position": {
+                "x": 41.8,
+                "y": 29.3,
+                "w": 18.5,
+                "h": 8.6
+              }
+            },
+            {
+              "id": "picture-orange",
+              "left": {
+                "ar": "البرتقالة",
+                "en": "Orange picture",
+                "fr": "Image d’orange"
+              },
+              "position": {
+                "x": 70.4,
+                "y": 29.3,
+                "w": 15.5,
+                "h": 8.6
+              }
+            }
+          ],
+          "targets": [
+            {
+              "id": "apple",
+              "label": "Apple / Pomme",
+              "position": {
+                "x": 70.0,
+                "y": 39.4,
+                "w": 18.5,
+                "h": 5.6
+              }
+            },
+            {
+              "id": "banana",
+              "label": "Banana / Banane",
+              "position": {
+                "x": 42.0,
+                "y": 39.4,
+                "w": 19.0,
+                "h": 5.6
+              }
+            },
+            {
+              "id": "orange",
+              "label": "Orange / Orange",
+              "position": {
+                "x": 15.6,
+                "y": 39.4,
+                "w": 19.0,
+                "h": 5.6
+              }
+            }
+          ],
+          "correctPairs": {
+            "picture-apple": "apple",
+            "picture-banana": "banana",
+            "picture-orange": "orange"
+          },
+          "explanation": {
+            "ar": "طابق كل صورة مع اسم الفاكهة الصحيح.",
+            "en": "Each picture matches the fruit with the same name.",
+            "fr": "Associe chaque image au nom correspondant."
+          },
+          "position": {
+            "x": 54,
+            "y": 17,
+            "w": 41,
+            "h": 8
+          },
+          "feedbackCorrect": {
+            "ar": "أحسنت! الصورة والكلمة متطابقتان.",
+            "en": "Well done! The picture and word match.",
+            "fr": "Bravo ! L’image et le mot correspondent."
+          },
+          "feedbackWrong": {
+            "ar": "هذه ليست الكلمة المناسبة للصورة. حاول مرة أخرى.",
+            "en": "That word does not match this picture. Try again.",
+            "fr": "Ce mot ne correspond pas à cette image. Réessaie."
+          }
+        },
+        {
+          "id": "page-note",
+          "type": "drawing",
+          "title": "ارسم وعلّق على الصفحة",
+          "prompt": {
+            "ar": "يمكنك الرسم أو الكتابة فوق صفحة الدرس. احفظ عملك ليبقى على هذا الجهاز.",
+            "en": "Draw or annotate on top of this page. Save to keep your work on this device.",
+            "fr": "Dessine ou annote cette page. Enregistre pour garder ton travail sur cet appareil."
+          },
+          "position": {
+            "x": 5,
+            "y": 76,
+            "w": 46,
+            "h": 8
+          }
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "label": "عملي الخاص",
+      "previewImage": "images/page-3.png",
+      "activities": [
+        {
+          "id": "favourite-fruit",
+          "type": "text_answer",
+          "title": "فاكهتي المفضلة",
+          "prompt": {
+            "ar": "اكتب اسم فاكهتك المفضلة باللغة الإنجليزية.",
+            "en": "Write the name of your favourite fruit in English.",
+            "fr": "Écris le nom de ton fruit préféré en anglais."
+          },
+          "placeholder": {
+            "ar": "فاكهتي المفضلة هي...",
+            "en": "My favourite fruit is...",
+            "fr": "Mon fruit préféré est..."
+          },
+          "expectedAnswers": [],
+          "saveAsWork": true,
+          "position": {
+            "x": 13,
+            "y": 20,
+            "w": 74,
+            "h": 8
+          }
+        },
+        {
+          "id": "draw-favourite",
+          "type": "drawing",
+          "title": "ارسم فاكهتك المفضلة",
+          "prompt": {
+            "ar": "ارسم فاكهتك المفضلة داخل مساحة الصفحة.",
+            "en": "Draw your favourite fruit on the page.",
+            "fr": "Dessine ton fruit préféré sur la page."
+          },
+          "position": {
+            "x": 13,
+            "y": 39,
+            "w": 74,
+            "h": 8
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "schemaVersion": 1,
+    "contentNotice": "أصول تجريبية منشأة لهذا المشروع. نغمة WAV توليد محلي وليست تسجيلًا بشريًا.",
+    "pdfPageSize": {
+      "width": 612,
+      "height": 792
+    }
+  }
+}

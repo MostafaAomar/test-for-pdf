@@ -1,0 +1,51 @@
+{
+  "id": "english-bac-u1-lesson-01",
+  "title": "Lesson 1",
+  "titleTranslations": {
+    "ar": "الدرس الأول",
+    "en": "Lesson 1",
+    "fr": "Leçon 1"
+  },
+  "description": "وصف مختصر للدرس.",
+  "descriptionTranslations": {
+    "ar": "وصف مختصر للدرس.",
+    "en": "A short description of the lesson.",
+    "fr": "Une courte description de la leçon."
+  },
+  "language": "en",
+  "pdf": "lesson.pdf",
+  "audioFiles": [],
+  "pages": [
+    {
+      "number": 1,
+      "label": "Page 1",
+      "activities": [
+        {
+          "id": "english-bac-u1-lesson-01-quiz-01",
+          "type": "mcq",
+          "title": "اختر الإجابة الصحيحة",
+          "prompt": {
+            "ar": "اقرأ السؤال في ملف PDF ثم اختر الإجابة الصحيحة.",
+            "en": "Read the question in the PDF, then choose the correct answer.",
+            "fr": "Lis la question dans le PDF puis choisis la bonne réponse."
+          },
+          "choices": [
+            { "id": "answer-a", "label": { "ar": "الإجابة أ", "en": "Answer A", "fr": "Réponse A" } },
+            { "id": "answer-b", "label": { "ar": "الإجابة ب", "en": "Answer B", "fr": "Réponse B" } }
+          ],
+          "correctAnswer": "answer-a",
+          "explanation": {
+            "ar": "عدّل هذا الشرح ليتوافق مع سؤالك.",
+            "en": "Replace this explanation with the correct feedback.",
+            "fr": "Remplace cette explication par la correction adaptée."
+          },
+          "position": { "x": 5, "y": 14, "w": 7, "h": 6 }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "schemaVersion": 1,
+    "notes": "Copy this template to the lesson folder and change all IDs and content."
+  }
+}

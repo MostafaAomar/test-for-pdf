@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#126b53">
+  <title>إدارة المواد | تعلّم تفاعلي</title>
+  <link rel="stylesheet" href="./src/manager.css">
+  <script type="module" src="./src/manager.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="العودة إلى تطبيق الطالب">
+      <span class="brand-mark">ت</span><span><strong>تعلّم تفاعلي</strong><small>إدارة المحتوى</small></span>
+    </a>
+    <nav class="topnav"><a href="./index.html">واجهة الطالب</a><span class="mode-label">وضع إدارة المواد</span></nav>
+  </header>
+
+  <main class="layout">
+    <section class="intro">
+      <div class="eyebrow">مساحة المطوّر</div>
+      <h1>أضف رابط الدرس، ثم انشر ملفًا واحدًا إلى GitHub.</h1>
+      <p>واجهة الطالب تعمل بـ HTML وCSS وJavaScript العادي، ويمكن استضافتها على GitHub Pages. الملفات الكبيرة تبقى على Google Drive أو خدمة ملفات خارجية، ولوحة الإدارة تنشئ فهرس JSON فقط.</p>
+      <div class="intro-links"><a class="button button-light" href="./index.html?developer=1">فتح استوديو التفاعلات</a><span id="autosave-status" class="save-status" aria-live="polite">جاهز للحفظ التلقائي</span></div>
+    </section>
+
+    <section class="drive-card card" aria-labelledby="drive-title">
+      <div class="section-heading">
+        <div class="section-icon">☁</div>
+        <div><h2 id="drive-title">الملفات خارج التطبيق — بدون تسجيل دخول</h2><p>ارفع PDF والصوت بنفسك إلى Google Drive أو مستودع ملفات على GitHub، ثم ألصق الروابط هنا. لوحة الإدارة لا ترفع الملفات ولا تطلب صلاحيات على حسابك.</p></div>
+        <span id="drive-status" class="status-chip">لا يلزم ربط</span>
+      </div>
+      <details id="drive-settings">
+        <summary>إعداد اختياري لروابط Google Drive</summary>
+        <div class="form-grid drive-fields">
+          <label class="field field-wide">Google Drive API Key (اختياري)
+            <input id="google-api-key" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">
+            <small>لا تحتاج OAuth Client ID ولا تسجيل دخول. اتركه فارغًا إذا كانت روابط ملفاتك مباشرة وتسمح بالقراءة من المتصفح.</small>
+          </label>
+        </div>
+        <div class="drive-actions">
+          <button id="save-drive-settings" class="button button-muted" type="button">حفظ المفتاح</button>
+          <a class="subtle-link" href="https://console.cloud.google.com/" target="_blank" rel="noopener">صفحة Google Cloud للمطور فقط ↗</a>
+        </div>
+      </details>
+      <div id="drive-note" class="inline-note">الطريقة الأسهل: استخدم رابط PDF مباشرًا يمكن للمتصفح قراءته. روابط مشاركة Google Drive العادية قد لا تعمل داخل عارض PDF التفاعلي دون API Key بسبب قيود المتصفح.</div>
+    </section>
+
+    <section class="card material-card" aria-labelledby="material-title">
+      <div class="section-heading">
+        <div class="section-icon">＋</div><div><h2 id="material-title">إضافة مادة تعليمية</h2><p>لا تكتب أي معرّف أو اسم ملف يدويًا. سيولّد التطبيق هذه القيم عند الحفظ.</p></div>
+      </div>
+      <form id="material-form">
+        <div class="hierarchy-grid">
+          <label class="field">المادة
+            <select id="subject-select" required><option value="">اختر المادة</option></select>
+            <input id="subject-new" class="conditional-field" type="text" placeholder="اسم المادة الجديدة" hidden>
+          </label>
+          <label class="field">الصف
+            <select id="grade-select" required disabled><option value="">اختر الصف</option></select>
+            <input id="grade-new" class="conditional-field" type="text" placeholder="اسم الصف الجديد" hidden>
+          </label>
+          <label class="field">الوحدة
+            <select id="unit-select" required disabled><option value="">اختر الوحدة</option></select>
+            <input id="unit-new" class="conditional-field" type="text" placeholder="اسم الوحدة الجديدة" hidden>
+          </label>
+        </div>
+
+        <div class="form-grid">
+          <label class="field field-wide">اسم الدرس
+            <input id="lesson-title" type="text" required maxlength="140" placeholder="مثال: الوحدة الأولى — التعارف" autocomplete="off">
+          </label>
+          <label class="field field-wide">وصف مختصر (اختياري)
+            <input id="lesson-description" type="text" maxlength="240" placeholder="وصف يساعد الطالب على معرفة محتوى الدرس">
+          </label>
+        </div>
+
+        <div class="resource-block">
+          <div class="resource-heading"><span class="resource-icon">PDF</span><div><h3>ملف الكتاب أو الدرس</h3><p>الصق رابط PDF من Google Drive أو GitHub أو استضافة ملفات خارجية.</p></div></div>
+          <div class="form-grid resource-fields">
+            <label class="field field-wide">رابط PDF
+              <input id="pdf-url" type="url" inputmode="url" required placeholder="https://github.com/user/repo/blob/main/lesson.pdf أو رابط Drive">
+            </label>
+          </div>
+          <p class="field-help">لا يتم نسخ PDF إلى مستودع التطبيق. احفظه أولًا في مكان خارجي ثم ألصق رابطه. لكي يظهر PDF داخل العارض مع الأنشطة فوق صفحاته، يجب أن يسمح مصدر الملف بطلبات المتصفح (CORS). روابط GitHub ذات صيغة blob يحوّلها التطبيق تلقائيًا إلى raw؛ روابط Google Drive قد تحتاج المفتاح الاختياري أعلاه.</p>
+        </div>
+
+        <div class="resource-block">
+          <div class="resource-heading"><span class="resource-icon audio-icon">♫</span><div><h3>ملفات الصوت</h3><p>الصق رابطًا أو أكثر للملفات الصوتية التي رفعتها مسبقًا إلى Drive أو GitHub.</p></div></div>
+          <label class="field">روابط الصوت — رابط واحد في كل سطر
+            <textarea id="audio-urls" rows="3" placeholder="https://github.com/user/repo/blob/main/audio1.mp3&#10;https://github.com/user/repo/blob/main/audio2.mp3"></textarea>
+          </label>
+          <p class="field-help">ارفع ملفات الصوت خارجيًا ثم ألصق رابطًا واحدًا في كل سطر. سيُنشئ التطبيق زر تشغيل تلقائيًا لكل رابط. ويمكن نقل الأزرار لاحقًا من «استوديو التفاعلات».</p>
+        </div>
+
+        <div class="form-actions">
+          <button id="save-material" class="button button-primary button-large" type="submit">حفظ الدرس</button>
+          <button id="clear-form" class="button button-muted" type="button">مسح الحقول</button>
+          <span id="form-message" class="form-message" role="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="card catalog-card" aria-labelledby="catalog-title">
+      <div class="catalog-heading">
+        <div class="section-heading"><div class="section-icon">▤</div><div><h2 id="catalog-title">المواد المضافة</h2><p>قائمة واحدة مرتبة حسب المادة والصف والوحدة.</p></div></div>
+        <span id="material-count" class="count-chip">0 درس</span>
+      </div>
+      <div id="materials-list" class="materials-list"><div class="empty-list">جارٍ تحميل الفهرس…</div></div>
+      <div class="publish-panel">
+        <div><strong>نشر الدروس للطلاب</strong><p>أضف الدرس واحفظه، ثم نزّل فهرس JSON وارفعه إلى مستودع GitHub بدل الملف الحالي. هذه الخطوة تجعل الدرس يظهر للجميع.</p></div>
+        <div class="publish-actions">
+          <button id="download-catalog" class="button button-primary" type="button">١. تنزيل index.json</button>
+        </div>
+      </div>
+      <div class="deploy-note"><strong>٢. ارفعه إلى GitHub:</strong> افتح مستودعك على GitHub، ثم افتح <code>lessons/index.json</code> واختر تعديل الملف أو استبداله بالملف الذي نزّلته، ثم اضغط <em>Commit changes</em>. لا ترفع ملفات PDF أو الصوت إلى مستودع التطبيق؛ ارفع فقط ملف JSON الصغير الذي يحتوي على الروابط.</div>
+    </section>
+    <footer class="footer-note">صفحة الإدارة تحفظ المسودة على هذا المتصفح. لا تطلب كلمة مرور Google ولا ترفع ملفات إلى أي حساب.</footer>
+  </main>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-label="سلة فاكهة ملونة">
+<rect width="640" height="400" rx="32" fill="#fff6e8"/><circle cx="320" cy="190" r="140" fill="#f5e7d0"/>
+<path d="M170 190 L470 190 L430 325 Q320 360 210 325Z" fill="#d48b45" stroke="#995b2d" stroke-width="8"/>
+<path d="M175 210 Q320 250 465 210 M195 250 Q320 290 445 250 M215 290 Q320 325 425 290" fill="none" stroke="#f4ca81" stroke-width="8"/>
+<g><circle cx="245" cy="155" r="58" fill="#e74c3c"/><path d="M245 102 Q238 78 260 63" fill="none" stroke="#6c8d3f" stroke-width="10" stroke-linecap="round"/><ellipse cx="270" cy="79" rx="24" ry="12" fill="#70a75a" transform="rotate(-25 270 79)"/></g>
+<g><circle cx="350" cy="125" r="55" fill="#f5c542"/><path d="M350 76 Q345 55 360 43" fill="none" stroke="#6c8d3f" stroke-width="9" stroke-linecap="round"/><ellipse cx="373" cy="57" rx="20" ry="10" fill="#70a75a" transform="rotate(-20 373 57)"/></g>
+<g><path d="M390 180 Q420 115 455 165 Q475 200 435 235 Q405 225 390 180Z" fill="#7dbf69"/><path d="M414 157 Q432 181 432 220" stroke="#3c8b4a" stroke-width="5" fill="none"/></g>
+<g><circle cx="285" cy="220" r="47" fill="#ff8b52"/><path d="M285 177 Q280 160 296 151" stroke="#6c8d3f" stroke-width="8" fill="none" stroke-linecap="round"/><ellipse cx="308" cy="162" rx="17" ry="9" fill="#70a75a" transform="rotate(-25 308 162)"/></g>
+<text x="320" y="52" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#603f2b">FRUIT BASKET · سلة الفاكهة</text></svg>

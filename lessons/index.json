@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "subjects": [
+    {
+      "id": "english",
+      "title": {
+        "ar": "اللغة الإنجليزية",
+        "en": "English",
+        "fr": "Anglais"
+      },
+      "description": {
+        "ar": "دروس اللغة الإنجليزية وملفات الاستماع والتمارين.",
+        "en": "English lessons, listening files and practice.",
+        "fr": "Cours d'anglais, fichiers audio et exercices."
+      },
+      "language": "en",
+      "icon": "A",
+      "grades": [
+        {
+          "id": "baccalaureate",
+          "title": {
+            "ar": "البكالوريا",
+            "en": "Baccalaureate",
+            "fr": "Baccalauréat"
+          },
+          "units": [
+            {
+              "id": "unit-1",
+              "title": {
+                "ar": "الوحدة الأولى",
+                "en": "Unit 1",
+                "fr": "Unité 1"
+              }
+            },
+            {
+              "id": "unit-2",
+              "title": {
+                "ar": "الوحدة الثانية",
+                "en": "Unit 2",
+                "fr": "Unité 2"
+              }
+            },
+            {
+              "id": "unit-3",
+              "title": {
+                "ar": "الوحدة الثالثة",
+                "en": "Unit 3",
+                "fr": "Unité 3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arabic",
+      "title": {
+        "ar": "اللغة العربية",
+        "en": "Arabic",
+        "fr": "Arabe"
+      },
+      "description": {
+        "ar": "النصوص والقواعد والتدريبات.",
+        "en": "Texts, grammar and exercises.",
+        "fr": "Textes, grammaire et exercices."
+      },
+      "language": "ar",
+      "icon": "ض",
+      "grades": [
+        {
+          "id": "baccalaureate",
+          "title": {
+            "ar": "البكالوريا",
+            "en": "Baccalaureate",
+            "fr": "Baccalauréat"
+          },
+          "units": [
+            {
+              "id": "unit-1",
+              "title": {
+                "ar": "الوحدة الأولى",
+                "en": "Unit 1",
+                "fr": "Unité 1"
+              }
+            },
+            {
+              "id": "unit-2",
+              "title": {
+                "ar": "الوحدة الثانية",
+                "en": "Unit 2",
+                "fr": "Unité 2"
+              }
+            },
+            {
+              "id": "unit-3",
+              "title": {
+                "ar": "الوحدة الثالثة",
+                "en": "Unit 3",
+                "fr": "Unité 3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "french",
+      "title": {
+        "ar": "اللغة الفرنسية",
+        "en": "French",
+        "fr": "Français"
+      },
+      "description": {
+        "ar": "دروس اللغة الفرنسية وأنشطة الفهم والاستماع.",
+        "en": "French lessons, comprehension and listening.",
+        "fr": "Cours de français, compréhension et écoute."
+      },
+      "language": "fr",
+      "icon": "É",
+      "grades": [
+        {
+          "id": "baccalaureate",
+          "title": {
+            "ar": "البكالوريا",
+            "en": "Baccalaureate",
+            "fr": "Baccalauréat"
+          },
+          "units": [
+            {
+              "id": "unit-1",
+              "title": {
+                "ar": "الوحدة الأولى",
+                "en": "Unit 1",
+                "fr": "Unité 1"
+              }
+            },
+            {
+              "id": "unit-2",
+              "title": {
+                "ar": "الوحدة الثانية",
+                "en": "Unit 2",
+                "fr": "Unité 2"
+              }
+            },
+            {
+              "id": "unit-3",
+              "title": {
+                "ar": "الوحدة الثالثة",
+                "en": "Unit 3",
+                "fr": "Unité 3"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "id": "sample-lesson",
+      "shortCode": "FRUIT1",
+      "subjectId": "english",
+      "gradeId": "baccalaureate",
+      "unitId": "unit-1",
+      "title": "مثال تجريبي: رحلة إلى سلة الفاكهة",
+      "titleTranslations": {
+        "en": "DEMO: My fruit basket",
+        "fr": "DÉMO : Mon panier de fruits"
+      },
+      "description": "درس تجريبي فقط لاختبار العرض والأنشطة. استبدله بملفات المنهاج الفعلية عند تجهيز المحتوى.",
+      "descriptionTranslations": {
+        "en": "A demo lesson for testing the PDF viewer and activities. Replace it with your real curriculum files.",
+        "fr": "Une leçon de démonstration. Remplacez-la par vos fichiers de cours réels."
+      },
+      "language": "en",
+      "coverImage": "lessons/sample-lesson/images/cover.svg",
+      "lessonFile": "lessons/sample-lesson/lesson.json",
+      "tags": [
+        "مثال تجريبي",
+        "أنشطة تفاعلية"
+      ],
+      "activityCount": 8,
+      "pageCount": 3,
+      "demo": true,
+      "isNew": true
+    }
+  ],
+  "accessControl": {
+    "enabled": false,
+    "passcode": "STUDENT2026",
+    "hint": "اسأل معلمك عن الرمز"
+  }
+}

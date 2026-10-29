@@ -1,0 +1,12 @@
+{
+  "name": "interactive-learning-arabic",
+  "version": "8.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs --open",
+    "start": "node server.mjs --open",
+    "test": "node --test tests/*.test.mjs",
+    "validate:content": "node scripts/validate-content.mjs"
+  }
+}
