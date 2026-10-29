@@ -360,6 +360,27 @@ function wireDeveloperTools() {
     downloadJsonFile(`${currentLesson.id}.lesson.json`, portable);
     toast('بدأ تنزيل ملف إعدادات الدرس. احتفظ به مع ملف PDF ومجلد الأصول.');
   });
+  document.querySelector('#developer-git-push')?.addEventListener('click', async () => {
+    saveDeveloperInspectorIfDirty();
+    const btn = document.querySelector('#developer-git-push');
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'جارٍ المزامنة والنشر إلى GitHub...';
+    try {
+      const res = await fetch('/api/git-sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        toast('✓ ' + (data.message || 'تم نشر جميع التحديثات إلى GitHub بنجاح!'));
+      } else {
+        throw new Error(data.error || 'تعذّر الرفع التلقائي');
+      }
+    } catch (err) {
+      toast('ملاحظة: لرفع التغييرات يدويًا إلى مستودع GitHub، اكتب في موجه الأوامر:\ngit add . && git commit -m "update" && git push origin main');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
   document.querySelector('#developer-import-config')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -640,6 +661,7 @@ function lessonMarkup(lesson) {
         <button class="button button-primary" type="button" id="developer-add-region">＋ أضف منطقة بالسحب</button>
         <button class="button button-secondary" type="button" id="developer-save-config">حفظ الإعدادات</button>
         <button class="button button-secondary" type="button" id="developer-export-config">تنزيل ملف الدرس JSON</button>
+        <button class="button button-accent" type="button" id="developer-git-push" style="background:#238636;color:#fff;">🚀 نشر التحديثات إلى GitHub</button>
         <label>استيراد إعدادات محفوظة<input class="developer-file-input" id="developer-import-config" type="file" accept=".json,application/json"></label>
       </div>
       <section class="developer-inspector" id="developer-inspector" hidden>
@@ -670,40 +692,13 @@ function lessonMarkup(lesson) {
         <span class="reader-progress" id="lesson-progress">0 من ${total} نشاط مكتمل</span>
       </section>
       <section class="pdf-panel" aria-label="صفحة الدرس من ملف PDF"><div id="pdf-viewer-mount"></div></section>
-      <section class="page-activities-section" aria-live="polite">
-        <div class="page-activities-heading"><div><h2 id="page-activities-title">أنشطة هذه الصفحة</h2><p id="page-activities-description">اقرأ التعليمات الموجودة في ملف الدرس، ثم اختر النشاط عند الحاجة.</p></div></div>
-        <div class="page-activities" id="page-activities"><div class="activities-empty">سيظهر هنا ما يخص الصفحة الحالية.</div></div>
-      </section>
     </main>
     <footer class="reader-footer">تُحفظ النتائج على هذا الجهاز فقط. استخدم «تنزيل دون إنترنت» لحفظ ملف PDF والصوت قبل انقطاع الشبكة.</footer>`;
 }
 
-function renderPageActivities(pageNumber = 1) {
-  const mount = document.querySelector('#page-activities');
-  const title = document.querySelector('#page-activities-title');
-  const description = document.querySelector('#page-activities-description');
-  if (!mount || !currentLesson) return;
-  const page = (currentLesson.pages || []).find((item) => Number(item.number) === Number(pageNumber));
-  const activities = page?.activities || [];
-  if (title) title.textContent = `أنشطة الصفحة ${pageNumber}`;
-  if (description) description.textContent = activities.length ? 'استخدم الأزرار الصغيرة فوق الصفحة لتشغيل الصوت أو فتح النشاط، أو اختر نشاطًا من القائمة أدناه.' : 'اتبع تعليمات ملف PDF. لا توجد أنشطة رقمية إضافية لهذه الصفحة.';
-  if (!activities.length) {
-    mount.innerHTML = `<div class="activities-empty">لا توجد أنشطة إضافية لهذه الصفحة. تابع ما يطلبه ملف PDF.</div>`;
-    return;
-  }
-  mount.innerHTML = activities.map((activity) => {
-    const result = resultMap.get(activity.id);
-    const prompt = localized(activity.prompt);
-    return `<button type="button" class="page-activity-button${result?.completed ? ' done' : ''}" data-activity-id="${e(activity.id)}" data-page-number="${Number(pageNumber)}">
-      <span class="page-activity-icon" aria-hidden="true">${activityGlyph[activity.type] || '•'}</span>
-      <span class="page-activity-copy"><strong>${e(activity.title)}</strong>${prompt ? `<span>${e(prompt)}</span>` : ''}</span>
-      <span class="page-activity-state">${result?.completed ? '✓ أُنجز' : 'ابدأ ←'}</span>
-    </button>`;
-  }).join('');
-  mount.querySelectorAll('[data-activity-id]').forEach((button) => button.addEventListener('click', () => {
-    const activity = activities.find((item) => item.id === button.dataset.activityId);
-    if (activity) openActivity(activity, Number(button.dataset.pageNumber));
-  }));
+function renderPageActivities() {
+  // Activities list at the bottom removed per user requirement.
+  // All interactions (audio, read_aloud, matching lines, mcq, text answers, drawing) now live directly on the PDF page.
 }
 
 async function refreshProgress() {
@@ -835,6 +830,33 @@ async function openLesson(entry, pushState = false) {
           });
           await refreshProgress();
         } catch (_) { toast('اشتغل الصوت، لكن تعذّر حفظ تقدّم الاستماع.'); }
+      },
+      onTextAnswer: async (activity, text, isCorrect) => {
+        try {
+          await progressService.saveResult({
+            lessonId: lesson.id,
+            activityId: activity.id,
+            completed: Boolean(text.trim()),
+            isCorrect: typeof isCorrect === 'boolean' ? isCorrect : null,
+            answer: { text },
+            timestamp: Date.now()
+          });
+          await refreshProgress();
+        } catch (_) {}
+      },
+      onMcqResult: async (activity, choiceId, isCorrect) => {
+        try {
+          await progressService.saveResult({
+            lessonId: lesson.id,
+            activityId: activity.id,
+            completed: isCorrect,
+            isCorrect,
+            score: isCorrect ? 1 : 0,
+            answer: { choiceId },
+            timestamp: Date.now()
+          });
+          await refreshProgress();
+        } catch (_) {}
       },
       getResult: (activityId) => resultMap.get(activityId),
       getLanguage: () => currentLang

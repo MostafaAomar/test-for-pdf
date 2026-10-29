@@ -477,6 +477,26 @@ function bindEvents() {
   $('#save-drive-settings')?.addEventListener('click', () => saveDriveSettings(true));
   $('#google-api-key')?.addEventListener('change', () => saveDriveSettings(false));
   $('#download-catalog').addEventListener('click', downloadCatalog);
+  $('#git-sync-btn')?.addEventListener('click', async () => {
+    const btn = $('#git-sync-btn');
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'جارٍ المزامنة والنشر إلى GitHub...';
+    try {
+      const res = await fetch('/api/git-sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('✓ ' + (data.message || 'تم نشر التحديثات إلى GitHub بنجاح!'));
+      } else {
+        throw new Error(data.error || 'تعذّر الرفع التلقائي');
+      }
+    } catch (err) {
+      showToast('ملاحظة: لرفع التغييرات يدويًا إلى مستودع GitHub، اكتب في موجه الأوامر:\ngit add . && git commit -m "update" && git push origin main');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
   $('#pdf-file-picker')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;

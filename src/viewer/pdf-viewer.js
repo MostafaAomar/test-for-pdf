@@ -12,7 +12,7 @@ const ACTIVITY_META = {
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 export class PdfViewer {
-  constructor(mount, lesson, { onActivate, onPageChange, onToast, onAudioPlayed, onMatchingResult, onDeveloperSelect, onDeveloperDirty, getResult, getLanguage }) {
+  constructor(mount, lesson, { onActivate, onPageChange, onToast, onAudioPlayed, onMatchingResult, onDeveloperSelect, onDeveloperDirty, getResult, getLanguage, onTextAnswer, onMcqResult }) {
     this.mount = mount;
     this.lesson = lesson;
     this.onActivate = onActivate;
@@ -24,6 +24,8 @@ export class PdfViewer {
     this.onDeveloperDirty = onDeveloperDirty;
     this.getResult = getResult;
     this.getLanguage = getLanguage;
+    this.onTextAnswer = onTextAnswer;
+    this.onMcqResult = onMcqResult;
     this.currentPage = 1;
     this.zoom = 1;
     this.pdf = null;
@@ -40,10 +42,50 @@ export class PdfViewer {
     this.regionSelection = null;
     this.selectedMatchSource = null;
     this.buildShell();
+    this.initNavigationGestures();
     this.resizeObserver = new ResizeObserver(() => {
       if (this.mode !== 'loading' && !this.annotation) this.renderPage(this.currentPage);
     });
     this.resizeObserver.observe(this.frame);
+  }
+
+  initNavigationGestures() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    this.frame.addEventListener('touchstart', (e) => {
+      if (this.annotation || this.developerMode) return;
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: true });
+
+    this.frame.addEventListener('touchend', (e) => {
+      if (this.annotation || this.developerMode) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) {
+          if (this.currentPage < this.pageCount()) this.goToPage(this.currentPage + 1);
+        } else {
+          if (this.currentPage > 1) this.goToPage(this.currentPage - 1);
+        }
+      }
+    }, { passive: true });
+
+    let wheelDebounce = 0;
+    this.frame.addEventListener('wheel', (e) => {
+      if (this.annotation || this.developerMode || Date.now() - wheelDebounce < 700) return;
+      const isAtBottom = this.frame.scrollTop + this.frame.clientHeight >= this.frame.scrollHeight - 8;
+      const isAtTop = this.frame.scrollTop <= 8;
+      if (e.deltaY > 50 && isAtBottom && this.currentPage < this.pageCount()) {
+        wheelDebounce = Date.now();
+        this.goToPage(this.currentPage + 1);
+      } else if (e.deltaY < -50 && isAtTop && this.currentPage > 1) {
+        wheelDebounce = Date.now();
+        this.goToPage(this.currentPage - 1);
+      }
+    }, { passive: true });
   }
 
   buildShell() {
@@ -194,8 +236,24 @@ export class PdfViewer {
 
   finishPageRender(token) {
     if (token !== this.renderToken) return;
+    this.renderPersistentDrawings(this.currentPage);
     this.refreshMarkers();
     this.onPageChange({ currentPage: this.currentPage, pageCount: this.pageCount(), activities: this.getPageData().activities || [] });
+  }
+
+  renderPersistentDrawings(pageNumber) {
+    this.stage?.querySelector('.persistent-drawing-overlay')?.remove();
+    const pageAnnotation = this.getResult?.(`__page-annotation-${pageNumber}`);
+    const drawingActivity = (this.getPageData(pageNumber).activities || []).find((a) => a.type === 'drawing');
+    const activityDrawing = drawingActivity ? this.getResult?.(drawingActivity.id) : null;
+    const drawingData = pageAnnotation?.studentWork?.drawingData || activityDrawing?.studentWork?.drawingData;
+    if (drawingData) {
+      const img = document.createElement('img');
+      img.className = 'persistent-drawing-overlay';
+      img.src = drawingData;
+      img.alt = `رسم الصفحة ${pageNumber}`;
+      this.stage.append(img);
+    }
   }
 
   async goToPage(page) { return this.renderPage(page); }
@@ -204,6 +262,7 @@ export class PdfViewer {
     this.stage.querySelector('.activity-marker-layer')?.remove();
     this.stage.querySelector('.developer-layer')?.remove();
     this.stage.querySelector('.region-selection-surface')?.remove();
+    this.renderPersistentDrawings(this.currentPage);
     const activities = this.getPageData().activities || [];
     if (this.developerMode) {
       this.renderDeveloperLayer(activities);
@@ -222,6 +281,13 @@ export class PdfViewer {
         this.renderStudentMatching(layer, activity);
         continue;
       }
+
+      if (activity.type === 'text_answer' && activity.position) {
+        hasItems = true;
+        this.renderInlineTextAnswer(layer, activity);
+        continue;
+      }
+
       if (!activity.position || !Number.isFinite(Number(activity.position.x)) || !Number.isFinite(Number(activity.position.y))) continue;
       hasItems = true;
       const button = document.createElement('button');
@@ -257,8 +323,24 @@ export class PdfViewer {
           await this.toggleMarkerAudio(activity, button);
           return;
         }
-        if (activity.type === 'read_aloud' && (activity.text || activity.prompt)) {
+        if (activity.type === 'read_aloud') {
           this.toggleReadAloud(activity, button);
+          return;
+        }
+        if (activity.type === 'mcq') {
+          this.openInlineMcq(activity, button);
+          return;
+        }
+        if (activity.type === 'drawing') {
+          const previous = this.getResult?.(activity.id) || this.getResult?.(`__page-annotation-${this.currentPage}`);
+          await this.startAnnotation({
+            activity,
+            initialWork: previous?.studentWork || null,
+            onSave: async (studentWork) => {
+              await this.onMatchingResult?.(activity, { completed: true, studentWork, timestamp: Date.now() });
+              this.renderPersistentDrawings(this.currentPage);
+            }
+          });
           return;
         }
         this.onActivate?.(activity, this.currentPage);
@@ -266,6 +348,118 @@ export class PdfViewer {
       layer.append(button);
     }
     if (hasItems) this.stage.append(layer);
+  }
+
+  renderInlineTextAnswer(layer, activity) {
+    const container = document.createElement('div');
+    container.className = 'inline-text-answer-container';
+    const pos = activity.position || { x: 10, y: 50, w: 40, h: 10 };
+    container.style.left = `${Number(pos.x) || 0}%`;
+    container.style.top = `${Number(pos.y) || 0}%`;
+    container.style.width = `${Math.max(6, Number(pos.w) || 25)}%`;
+    container.style.height = `${Math.max(4, Number(pos.h) || 8)}%`;
+
+    const saved = this.getResult?.(activity.id);
+    const initialText = saved?.answer?.text || saved?.text || '';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'inline-text-input';
+    textarea.placeholder = activity.title || 'اكتب هنا…';
+    textarea.value = initialText;
+    textarea.setAttribute('aria-label', activity.title || 'إجابة نصية');
+
+    const statusEl = document.createElement('span');
+    statusEl.className = 'inline-text-status';
+
+    const checkAnswer = (text) => {
+      const normalized = text.trim().toLowerCase();
+      const expected = (activity.expectedAnswers || []).map((ans) => String(ans).trim().toLowerCase()).filter(Boolean);
+      if (expected.length > 0) {
+        const isCorrect = expected.some((ans) => normalized === ans || normalized.includes(ans));
+        textarea.classList.toggle('is-correct', isCorrect);
+        statusEl.textContent = isCorrect ? '✓ إجابة صحيحة' : '';
+        return isCorrect;
+      }
+      return Boolean(normalized);
+    };
+
+    if (initialText) checkAnswer(initialText);
+
+    let saveTimeout = null;
+    const save = async () => {
+      const text = textarea.value;
+      const isCorrect = checkAnswer(text);
+      await this.onTextAnswer?.(activity, text, isCorrect);
+      if (text.trim() && !textarea.classList.contains('is-correct')) {
+        statusEl.textContent = 'تم الحفظ';
+        setTimeout(() => { if (!textarea.classList.contains('is-correct')) statusEl.textContent = ''; }, 2000);
+      }
+    };
+
+    textarea.addEventListener('input', () => {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(save, 500);
+    });
+    textarea.addEventListener('blur', save);
+
+    container.append(textarea);
+    container.append(statusEl);
+    layer.append(container);
+  }
+
+  openInlineMcq(activity, button) {
+    this.stage.querySelector('.inline-mcq-popover')?.remove();
+    const popover = document.createElement('div');
+    popover.className = 'inline-mcq-popover';
+
+    const pos = activity.position || { x: 50, y: 50 };
+    const x = Math.max(2, Math.min(68, Number(pos.x) || 10));
+    const y = Math.max(2, Math.min(75, Number(pos.y) + (Number(pos.h) || 5)));
+    popover.style.left = `${x}%`;
+    popover.style.top = `${y}%`;
+
+    const saved = this.getResult?.(activity.id);
+    const chosenId = saved?.answer?.choiceId || saved?.answer || null;
+    const promptText = typeof activity.prompt === 'string' ? activity.prompt : (activity.prompt?.ar || activity.prompt?.en || '');
+
+    popover.innerHTML = `
+      <div class="inline-mcq-header">
+        <span>${escapeHtml(activity.title || 'سؤال اختيار من متعدد')}</span>
+        <button type="button" class="inline-mcq-close" aria-label="إغلاق">×</button>
+      </div>
+      ${promptText ? `<div class="inline-mcq-prompt">${escapeHtml(promptText)}</div>` : ''}
+      <div class="inline-mcq-choices">
+        ${(activity.choices || []).map((choice) => {
+          const label = typeof choice.label === 'string' ? choice.label : (choice.label?.ar || choice.label?.en || choice.id);
+          const isSelected = chosenId === choice.id;
+          const isCorrect = choice.id === activity.correctAnswer;
+          const cls = isSelected ? (isCorrect ? 'is-correct' : 'is-wrong') : (chosenId && isCorrect ? 'is-correct' : '');
+          return `<button type="button" class="inline-mcq-choice-btn ${cls}" data-choice-id="${escapeHtml(choice.id)}">
+            <span>${escapeHtml(label)}</span>
+            ${cls === 'is-correct' ? '<span>✓</span>' : (cls === 'is-wrong' ? '<span>✗</span>' : '')}
+          </button>`;
+        }).join('')}
+      </div>`;
+
+    popover.querySelector('.inline-mcq-close').addEventListener('click', () => popover.remove());
+
+    popover.querySelectorAll('.inline-mcq-choice-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const choiceId = btn.dataset.choiceId;
+        const isCorrect = choiceId === activity.correctAnswer;
+        popover.querySelectorAll('.inline-mcq-choice-btn').forEach((b) => {
+          b.classList.remove('is-correct', 'is-wrong');
+          if (b.dataset.choiceId === choiceId) b.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+          if (!isCorrect && b.dataset.choiceId === activity.correctAnswer) b.classList.add('is-correct');
+        });
+        await this.onMcqResult?.(activity, choiceId, isCorrect);
+        this.onToast?.(isCorrect ? '✓ أحسنت! إجابة صحيحة' : '✗ إجابة غير صحيحة، حاول مجددًا');
+        button.classList.toggle('done', isCorrect);
+      });
+    });
+
+    this.stage.append(popover);
   }
 
   renderStudentMatching(layer, activity) {
@@ -644,7 +838,7 @@ export class PdfViewer {
 
   toggleReadAloud(activity, button) {
     if (!('speechSynthesis' in window)) {
-      this.onActivate?.(activity, this.currentPage);
+      this.onToast?.('المتصفح لا يدعم القراءة الصوتية للنص.');
       return;
     }
     if (window.speechSynthesis.speaking) {
@@ -663,11 +857,22 @@ export class PdfViewer {
     const currentLang = this.getLanguage?.() || 'ar';
     const textToRead = typeof activity.text === 'string' ? activity.text : (activity.text?.[currentLang] || activity.text?.ar || activity.text?.en || activity.prompt?.[currentLang] || activity.prompt?.ar || '');
     if (!textToRead) {
-      this.onActivate?.(activity, this.currentPage);
+      this.onToast?.('لا يوجد نص لقراءته في هذا النشاط.');
       return;
     }
+
+    // Auto-detect speech language based on text content
+    let speechLang = 'ar-SA';
+    if (/[a-zA-Z]/.test(textToRead)) {
+      speechLang = (/[éèêëàâçîïôùû]/i.test(textToRead) || currentLang === 'fr') ? 'fr-FR' : 'en-US';
+    } else if (/[\u0600-\u06FF]/.test(textToRead)) {
+      speechLang = 'ar-SA';
+    }
+
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = currentLang === 'ar' ? 'ar-SA' : currentLang === 'fr' ? 'fr-FR' : 'en-US';
+    utterance.lang = speechLang;
+    utterance.rate = 0.9;
+
     button.classList.add('playing');
     button.innerHTML = '<span class="marker-icon" aria-hidden="true">Ⅱ</span>';
     this.currentSpeechButton = button;
@@ -683,8 +888,9 @@ export class PdfViewer {
       button.innerHTML = '<span class="marker-icon" aria-hidden="true">🔊</span>';
       this.currentSpeechButton = null;
     };
+    try { window.speechSynthesis.resume(); } catch (_) {}
     window.speechSynthesis.speak(utterance);
-    this.onToast?.(`🔊 قراءة: "${textToRead.slice(0, 40)}${textToRead.length > 40 ? '...' : ''}"`);
+    this.onToast?.(`🔊 قراءة: "${textToRead.slice(0, 35)}${textToRead.length > 35 ? '...' : ''}"`);
   }
   async zoomBy(delta) {
     this.zoom = Math.min(2.1, Math.max(.65, Math.round((this.zoom + delta) * 100) / 100));
@@ -901,6 +1107,8 @@ export class PdfViewer {
         const data = { drawingData: canvas.toDataURL('image/png'), note: toolbar.querySelector('.annotation-toolbar-note-row textarea').value.trim() };
         await onSave(data);
         close();
+        this.renderPersistentDrawings(this.currentPage);
+        this.onToast?.('✓ تم حفظ الرسم على الصفحة بنجاح.');
       } catch (error) {
         saveButton.disabled = false;
         this.onToast?.(error.message || 'تعذّر حفظ الرسم.');

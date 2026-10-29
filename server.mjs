@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { createReadStream, existsSync, statSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -253,6 +253,25 @@ const server = http.createServer((request, response) => {
           response.end(JSON.stringify({ ok: false, error: err.message }));
         }
       });
+      return;
+    }
+
+    // 4. Git sync: auto commit and push to GitHub
+    if (url === '/api/git-sync') {
+      try {
+        execSync('git add .', { cwd: root, stdio: 'pipe' });
+        try {
+          execSync('git commit -m "تحديث محتوى وإعدادات الدروس عبر المنصة"', { cwd: root, stdio: 'pipe' });
+        } catch (_) {
+          // Nothing to commit is fine
+        }
+        execSync('git push origin main', { cwd: root, stdio: 'pipe' });
+        response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ ok: true, message: 'تم رفع جميع التحديثات إلى GitHub بنجاح!' }));
+      } catch (err) {
+        response.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ ok: false, error: err.message || String(err) }));
+      }
       return;
     }
   }
