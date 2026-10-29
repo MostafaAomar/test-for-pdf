@@ -93,11 +93,10 @@ export async function loadLessonIndex() {
 export async function loadLesson(indexEntry) {
   // Lessons added from the management page are embedded in the single remote catalog JSON.
   if (indexEntry?.lessonData && typeof indexEntry.lessonData === 'object') {
-    const lessonUrl = indexEntry.lessonFile || document.baseURI;
     return {
       ...indexEntry.lessonData,
       __lessonFile: indexEntry.lessonFile || 'lessons/index.json',
-      __lessonUrl: new URL(lessonUrl, document.baseURI).href,
+      __lessonUrl: document.baseURI,
       __indexEntry: indexEntry
     };
   }
@@ -126,8 +125,8 @@ export function findLesson(index, query) {
 }
 
 export function lessonAssetUrl(lesson, path) {
-  const value = String(path ?? '');
-  if (/^(data:|blob:)/i.test(value)) return value;
+  const value = String(path ?? '').trim();
+  if (!value || /^(data:|blob:)/i.test(value)) return value;
   const isLocalHost = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const isExternal = /^https?:\/\//i.test(value);
   // If running on localhost and accessing external file (e.g. Google Drive), proxy to eliminate CORS errors completely
@@ -138,7 +137,10 @@ export function lessonAssetUrl(lesson, path) {
   const driveMatch = value.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/?#]+)/i);
   if (driveMatch) return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
   if (/^https?:/i.test(value)) return value;
-  return new URL(value, lesson.__lessonUrl).href;
+
+  // If path starts with "lessons/", it is relative to root (document.baseURI), not to index.json!
+  const base = value.startsWith('lessons/') ? document.baseURI : (lesson?.__lessonUrl || document.baseURI);
+  return new URL(value, base).href;
 }
 
 export async function downloadLessonResources(indexEntry, lesson, onProgress = () => {}) {

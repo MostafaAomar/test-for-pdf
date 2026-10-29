@@ -3,7 +3,7 @@
  * The app shell is cached on installation; same-origin assets are cached as visited.
  * Individual lesson resources can be pinned explicitly with the CACHE_URLS message.
  */
-const VERSION = 'interactive-learning-v3';
+const VERSION = 'interactive-learning-v4';
 const SHELL_CACHE = `${VERSION}-shell`;
 const LESSON_CACHE = `${VERSION}-lessons`;
 const PRECACHE_ASSETS = /*__PRECACHE_ASSETS__*/[];
