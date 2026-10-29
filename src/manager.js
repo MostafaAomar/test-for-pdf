@@ -136,6 +136,7 @@ async function loadInitialCatalog() {
 }
 function saveCatalogLocal() {
   writeJsonStorage(CATALOG_KEY, catalog);
+  writeJsonStorage('interactive-learning-student-catalog', catalog);
   setSaveStatus('تم حفظ التغييرات محليًا');
   renderMaterialsList();
   fetch('/api/save-catalog', {

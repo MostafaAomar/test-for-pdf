@@ -1,6 +1,53 @@
 const INDEX_URL = new URL('lessons/index.json', document.baseURI);
 const STUDENT_CATALOG_KEY = 'interactive-learning-student-catalog';
+const MANAGER_CATALOG_KEY = 'interactive-learning-manager-catalog-v8';
 const isValidIndex = (value) => Boolean(value && Array.isArray(value.subjects) && Array.isArray(value.lessons));
+
+function mergeManagerCatalog(index) {
+  try {
+    const raw = localStorage.getItem(MANAGER_CATALOG_KEY);
+    if (!raw) return index;
+    const managerData = JSON.parse(raw);
+    if (!managerData || !Array.isArray(managerData.lessons)) return index;
+
+    const subjectsMap = new Map((index.subjects || []).map((s) => [s.id, { ...s, grades: [...(s.grades || [])] }]));
+    for (const s of managerData.subjects || []) {
+      if (!subjectsMap.has(s.id)) {
+        subjectsMap.set(s.id, { ...s, grades: [...(s.grades || [])] });
+      } else {
+        const existingSubject = subjectsMap.get(s.id);
+        const gradesMap = new Map((existingSubject.grades || []).map((g) => [g.id, { ...g, units: [...(g.units || [])] }]));
+        for (const g of s.grades || []) {
+          if (!gradesMap.has(g.id)) {
+            gradesMap.set(g.id, { ...g, units: [...(g.units || [])] });
+          } else {
+            const existingGrade = gradesMap.get(g.id);
+            const unitsMap = new Map((existingGrade.units || []).map((u) => [u.id, u]));
+            for (const u of g.units || []) {
+              if (!unitsMap.has(u.id)) unitsMap.set(u.id, u);
+            }
+            existingGrade.units = [...unitsMap.values()];
+          }
+        }
+        existingSubject.grades = [...gradesMap.values()];
+      }
+    }
+
+    const lessonsMap = new Map((index.lessons || []).map((l) => [l.id, l]));
+    for (const l of managerData.lessons || []) {
+      lessonsMap.set(l.id, l);
+    }
+
+    return {
+      ...index,
+      subjects: [...subjectsMap.values()],
+      lessons: [...lessonsMap.values()]
+    };
+  } catch (_) {
+    return index;
+  }
+}
+
 const readStudentCache = () => {
   try { return JSON.parse(localStorage.getItem(STUDENT_CATALOG_KEY) || 'null'); }
   catch (_) { return null; }
@@ -13,8 +60,9 @@ export async function loadLessonIndex() {
   catch (_) { response = null; }
 
   if (response?.ok) {
-    const index = await response.json();
+    let index = await response.json();
     if (!isValidIndex(index)) throw new Error('ملف lessons/index.json غير صالح.');
+    index = mergeManagerCatalog(index);
     try { localStorage.setItem(STUDENT_CATALOG_KEY, JSON.stringify(index)); } catch (_) {}
     return index;
   }
@@ -24,12 +72,21 @@ export async function loadLessonIndex() {
     const cache = await caches.open('interactive-learning-v3-lessons');
     const cachedResponse = await cache.match(INDEX_URL.href);
     if (cachedResponse) {
-      const index = await cachedResponse.json();
-      if (isValidIndex(index)) return index;
+      let index = await cachedResponse.json();
+      if (isValidIndex(index)) return mergeManagerCatalog(index);
     }
   } catch (_) {}
   const saved = readStudentCache();
-  if (isValidIndex(saved)) return saved;
+  if (isValidIndex(saved)) return mergeManagerCatalog(saved);
+
+  try {
+    const managerRaw = localStorage.getItem(MANAGER_CATALOG_KEY);
+    if (managerRaw) {
+      const managerIndex = JSON.parse(managerRaw);
+      if (isValidIndex(managerIndex)) return managerIndex;
+    }
+  } catch (_) {}
+
   throw new Error('تعذّر تحميل قائمة الدروس. تحقّق من الاتصال أو من وجود lessons/index.json في الموقع.');
 }
 
