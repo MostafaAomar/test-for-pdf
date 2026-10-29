@@ -65,7 +65,15 @@ export class PdfViewer {
       const pdfjsVersion = '4.10.38';
       this.pdfjs = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.min.mjs`);
       this.pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
-      this.pdf = await this.pdfjs.getDocument({ url: pdfUrl, useSystemFonts: true, disableFontFace: false }).promise;
+      this.pdf = await this.pdfjs.getDocument({
+        url: pdfUrl,
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/cmaps/`,
+        cMapPacked: true,
+        standardFontDataUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/standard_fonts/`,
+        disableFontFace: false,
+        useSystemFonts: false,
+        isEvalSupported: false
+      }).promise;
       this.mode = 'pdfjs';
       this.fallbackNote.hidden = true;
     } catch (error) {
@@ -167,6 +175,9 @@ export class PdfViewer {
       this.stage.style.height = `${viewport.height}px`;
       this.stage.innerHTML = '';
       this.stage.append(canvas);
+      if (document.fonts?.ready) {
+        try { await document.fonts.ready; } catch (_) {}
+      }
       this.renderTask = pdfPage.render({
         canvasContext: context,
         viewport,
@@ -267,6 +278,7 @@ export class PdfViewer {
     const matches = saved?.answer?.matches || saved?.answer || {};
     const sources = activity.pairs || [];
     const targets = activity.targets || [];
+
     for (const pair of sources) {
       const targetId = matches[pair.id];
       const target = targets.find((item) => item.id === targetId);
@@ -279,67 +291,165 @@ export class PdfViewer {
       const correct = (activity.correctPairs || {})[pair.id] === target.id;
       line.setAttribute('class', `matching-line ${correct ? 'is-correct' : 'is-wrong'}`);
       svg.append(line);
+
+      // If wrong, draw hint line to the correct target
+      if (!correct && this.matchingHints?.[pair.id]) {
+        const correctTarget = targets.find((item) => item.id === this.matchingHints[pair.id]);
+        if (correctTarget?.position) {
+          const hintLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          hintLine.setAttribute('x1', String((Number(pair.position.x) + Number(pair.position.w || 0) / 2) * 10));
+          hintLine.setAttribute('y1', String((Number(pair.position.y) + Number(pair.position.h || 0) / 2) * 10));
+          hintLine.setAttribute('x2', String((Number(correctTarget.position.x) + Number(correctTarget.position.w || 0) / 2) * 10));
+          hintLine.setAttribute('y2', String((Number(correctTarget.position.y) + Number(correctTarget.position.h || 0) / 2) * 10));
+          hintLine.setAttribute('class', 'matching-line is-hint');
+          svg.append(hintLine);
+        }
+      }
     }
     layer.append(svg);
+
+    // Reset button if any connection has been made
+    const matchCount = Object.keys(matches).length;
+    if (matchCount > 0) {
+      const resetBtn = document.createElement('button');
+      resetBtn.type = 'button';
+      resetBtn.className = 'matching-reset-chip';
+      resetBtn.innerHTML = '↺ إعادة محاولة التوصيل';
+      resetBtn.title = 'مسح الخطوط وإعادة المحاولة';
+      resetBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.matchingHints = {};
+        this.selectedMatchSource = null;
+        this.selectedMatchTarget = null;
+        await this.onMatchingResult?.(activity, { answer: {}, isCorrect: null, score: 0, completed: false });
+        this.refreshMarkers();
+        this.onToast?.('تم مسح خطوط التوصيل. يمكنك التوصيل من جديد.');
+      });
+      layer.append(resetBtn);
+    }
+
     for (const pair of sources) {
       if (!pair.position) continue;
-      const btn = this.createMatchingHotspot(activity, 'source', pair.id, pair.position, pair.left);
+      const isSolved = matches[pair.id] && (activity.correctPairs || {})[pair.id] === matches[pair.id];
+      const isError = matches[pair.id] && (activity.correctPairs || {})[pair.id] !== matches[pair.id];
+      const btn = this.createMatchingHotspot(activity, 'source', pair.id, pair.position, pair.left, isSolved, isError);
       layer.append(btn);
     }
     for (const target of targets) {
       if (!target.position) continue;
-      const btn = this.createMatchingHotspot(activity, 'target', target.id, target.position, target.label);
+      const isSolved = Object.entries(matches).some(([pId, tId]) => tId === target.id && (activity.correctPairs || {})[pId] === target.id);
+      const btn = this.createMatchingHotspot(activity, 'target', target.id, target.position, target.label, isSolved, false);
       layer.append(btn);
     }
   }
 
-  createMatchingHotspot(activity, kind, id, position, label) {
+  createMatchingHotspot(activity, kind, id, position, label, isSolved = false, isError = false) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `matching-hotspot matching-hotspot--${kind}${this.selectedMatchSource?.activityId === activity.id && this.selectedMatchSource?.pairId === id ? ' selected' : ''}`;
+    const isSelected = (kind === 'source' && this.selectedMatchSource?.activityId === activity.id && this.selectedMatchSource?.pairId === id) ||
+                       (kind === 'target' && this.selectedMatchTarget?.activityId === activity.id && this.selectedMatchTarget?.targetId === id);
+
+    button.className = `matching-hotspot matching-hotspot--${kind}${isSelected ? ' selected' : ''}${isSolved ? ' is-solved' : ''}${isError ? ' is-error' : ''}`;
     button.style.left = `${Number(position.x) || 0}%`;
     button.style.top = `${Number(position.y) || 0}%`;
-    button.style.width = `${Math.max(1, Number(position.w) || 5)}%`;
-    button.style.height = `${Math.max(1, Number(position.h) || 5)}%`;
+    button.style.width = `${Math.max(2, Number(position.w) || 5)}%`;
+    button.style.height = `${Math.max(2, Number(position.h) || 5)}%`;
     const textLabel = typeof label === 'string' ? label : (label?.[this.getLanguage?.() || 'ar'] || label?.ar || label?.en || 'نقطة توصيل');
-    button.setAttribute('aria-label', `${kind === 'source' ? 'نقطة البداية' : 'نقطة الهدف'}: ${textLabel}`);
-    button.title = `${kind === 'source' ? 'ابدأ التوصيل من' : 'أكمل التوصيل إلى'} ${textLabel}`;
+    button.setAttribute('aria-label', `${kind === 'source' ? 'عنصر' : 'هدف'}: ${textLabel}`);
+    button.title = textLabel;
+
     button.addEventListener('click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
+
+      // Handle clicking in EITHER direction (source -> target or target -> source)
       if (kind === 'source') {
+        // If a target was already selected, connect them!
+        if (this.selectedMatchTarget && this.selectedMatchTarget.activityId === activity.id) {
+          const targetId = this.selectedMatchTarget.targetId;
+          this.selectedMatchTarget = null;
+          await this.applyMatchConnection(activity, id, targetId);
+          return;
+        }
         this.selectedMatchSource = { activityId: activity.id, pairId: id };
+        this.selectedMatchTarget = null;
         this.refreshMarkers();
-        this.onToast?.('تم تحديد نقطة البداية. اضغط على الكلمة أو الصورة المطابقة لإكمال الخط.');
+        this.onToast?.(`تم تحديد «${textLabel}». اضغط الآن على الكلمة أو الصورة المقابلة.`);
         return;
       }
-      const selected = this.selectedMatchSource;
-      if (!selected || selected.activityId !== activity.id) {
-        this.onToast?.('ابدأ بالنقر على الكلمة أو الصورة التي تريد توصيلها أولًا.');
+
+      if (kind === 'target') {
+        // If a source was already selected, connect them!
+        if (this.selectedMatchSource && this.selectedMatchSource.activityId === activity.id) {
+          const pairId = this.selectedMatchSource.pairId;
+          this.selectedMatchSource = null;
+          await this.applyMatchConnection(activity, pairId, id);
+          return;
+        }
+        this.selectedMatchTarget = { activityId: activity.id, targetId: id };
+        this.selectedMatchSource = null;
+        this.refreshMarkers();
+        this.onToast?.(`تم تحديد «${textLabel}». اضغط الآن على الكلمة أو الصورة المقابلة.`);
         return;
       }
-      const pair = (activity.pairs || []).find((item) => item.id === selected.pairId);
-      if (!pair) { this.selectedMatchSource = null; this.refreshMarkers(); return; }
-      const resultMap = { ...(this.getResult?.(activity.id)?.answer?.matches || this.getResult?.(activity.id)?.answer || {}) };
-      resultMap[pair.id] = id;
-      const correct = (activity.correctPairs || {})[pair.id] === id;
-      this.selectedMatchSource = null;
-      const total = (activity.pairs || []).length;
-      const correctCount = (activity.pairs || []).filter((item) => resultMap[item.id] && resultMap[item.id] === (activity.correctPairs || {})[item.id]).length;
-      const complete = total > 0 && (activity.pairs || []).every((item) => Boolean(resultMap[item.id]));
-      const allCorrect = complete && correctCount === total;
-      const currentLang = this.getLanguage?.() || 'ar';
-      const correctFeedback = typeof activity.feedbackCorrect === 'string' ? activity.feedbackCorrect : (activity.feedbackCorrect?.[currentLang] || activity.feedbackCorrect?.ar || 'أحسنت، هذا هو التوصيل الصحيح.');
-      const wrongFeedback = typeof activity.feedbackWrong === 'string' ? activity.feedbackWrong : (activity.feedbackWrong?.[currentLang] || activity.feedbackWrong?.ar || 'حاول مرة أخرى، وابحث عن المطابقة المناسبة.');
-      this.onToast?.(correct ? `صحيح! ${correctFeedback}` : `هذا التوصيل غير صحيح. ${wrongFeedback}`);
-      await this.onMatchingResult?.(activity, {
-        answer: resultMap, isCorrect: complete ? allCorrect : null,
-        score: total ? correctCount / total : 0, completed: complete,
-        lastPairId: pair.id, lastTargetId: id, lastCorrect: correct
-      });
-      this.refreshMarkers();
     });
     return button;
+  }
+
+  async applyMatchConnection(activity, pairId, targetId) {
+    const pair = (activity.pairs || []).find((item) => item.id === pairId);
+    const target = (activity.targets || []).find((item) => item.id === targetId);
+    if (!pair) return;
+
+    const resultMap = { ...(this.getResult?.(activity.id)?.answer?.matches || this.getResult?.(activity.id)?.answer || {}) };
+    resultMap[pairId] = targetId;
+    const correct = (activity.correctPairs || {})[pairId] === targetId;
+
+    const currentLang = this.getLanguage?.() || 'ar';
+    const sourceName = typeof pair.left === 'string' ? pair.left : (pair.left?.[currentLang] || pair.left?.ar || pair.left?.en || '');
+    const targetName = target ? (typeof target.label === 'string' ? target.label : (target.label?.[currentLang] || target.label?.ar || target.label?.en || '')) : '';
+
+    if (correct) {
+      if (this.matchingHints) delete this.matchingHints[pairId];
+      this.onToast?.(`✓ أحسنت! إجابة صحيحة، تم توصيل «${sourceName}» بـ «${targetName}».`);
+    } else {
+      const correctTargetId = (activity.correctPairs || {})[pairId];
+      const correctTarget = (activity.targets || []).find((t) => t.id === correctTargetId);
+      const correctName = correctTarget ? (typeof correctTarget.label === 'string' ? correctTarget.label : (correctTarget.label?.[currentLang] || correctTarget.label?.ar || correctTarget.label?.en || '')) : '';
+
+      this.matchingHints ||= {};
+      this.matchingHints[pairId] = correctTargetId;
+
+      this.onToast?.(`❌ غير صحيح! الكلمة الصحيحة لـ «${sourceName}» هي: « ${correctName} »`);
+
+      // Clear the wrong line and hint after 4 seconds so student can try again
+      setTimeout(() => {
+        if (this.matchingHints) delete this.matchingHints[pairId];
+        const cur = { ...(this.getResult?.(activity.id)?.answer?.matches || this.getResult?.(activity.id)?.answer || {}) };
+        if ((activity.correctPairs || {})[pairId] !== cur[pairId]) {
+          delete cur[pairId];
+          this.onMatchingResult?.(activity, { answer: cur, isCorrect: false, score: 0, completed: false });
+        }
+        this.refreshMarkers();
+      }, 4000);
+    }
+
+    const total = (activity.pairs || []).length;
+    const correctCount = (activity.pairs || []).filter((item) => resultMap[item.id] && resultMap[item.id] === (activity.correctPairs || {})[item.id]).length;
+    const complete = total > 0 && (activity.pairs || []).every((item) => Boolean(resultMap[item.id]));
+    const allCorrect = complete && correctCount === total;
+
+    await this.onMatchingResult?.(activity, {
+      answer: resultMap,
+      isCorrect: complete ? allCorrect : null,
+      score: total ? correctCount / total : 0,
+      completed: complete,
+      lastPairId: pairId,
+      lastTargetId: targetId,
+      lastCorrect: correct
+    });
+    this.refreshMarkers();
   }
 
   renderDeveloperLayer(activities) {

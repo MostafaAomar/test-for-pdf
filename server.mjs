@@ -26,6 +26,80 @@ function safelyResolve(urlPath) {
   return full === root || full.startsWith(`${root}${path.sep}`) ? full : null;
 }
 
+function sendBufferWithRange(request, response, buffer, contentType) {
+  const total = buffer.length;
+  const range = request.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+    if (start >= total || end >= total || start > end) {
+      response.writeHead(416, { 'Content-Range': `bytes */${total}`, 'Access-Control-Allow-Origin': '*' });
+      return response.end();
+    }
+
+    const chunk = buffer.subarray(start, end + 1);
+    response.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${total}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunk.length,
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=86400'
+    });
+    response.end(chunk);
+  } else {
+    response.writeHead(200, {
+      'Content-Length': total,
+      'Accept-Ranges': 'bytes',
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=86400'
+    });
+    response.end(buffer);
+  }
+}
+
+function sendFileWithRange(request, response, filePath, contentType) {
+  const stat = statSync(filePath);
+  const total = stat.size;
+  const range = request.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+    if (start >= total || end >= total || start > end) {
+      response.writeHead(416, { 'Content-Range': `bytes */${total}`, 'Access-Control-Allow-Origin': '*' });
+      return response.end();
+    }
+
+    const chunksize = (end - start) + 1;
+    response.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${total}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    createReadStream(filePath, { start, end }).pipe(response);
+  } else {
+    response.writeHead(200, {
+      'Content-Length': total,
+      'Accept-Ranges': 'bytes',
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': filePath.endsWith('.html') || filePath.endsWith('.json') ? 'no-cache' : 'public, max-age=3600'
+    });
+    createReadStream(filePath).pipe(response);
+  }
+}
+
 function normalizeDriveUrl(rawUrl) {
   const str = String(rawUrl || '').trim();
   const driveMatch = str.match(/\/file\/d\/([\w-]+)/i) || str.match(/[?&]id=([\w-]+)/i);
@@ -53,13 +127,7 @@ const server = http.createServer((request, response) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buffer = Buffer.from(await res.arrayBuffer());
         const contentType = res.headers.get('content-type') || (targetUrl.includes('.pdf') ? 'application/pdf' : 'application/octet-stream');
-        response.writeHead(200, {
-          'Content-Type': contentType,
-          'Content-Length': buffer.length,
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=86400'
-        });
-        response.end(buffer);
+        sendBufferWithRange(request, response, buffer, contentType);
       })
       .catch((err) => {
         response.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
@@ -196,13 +264,15 @@ const server = http.createServer((request, response) => {
     return;
   }
   const ext = path.extname(filePath).toLowerCase();
-  response.writeHead(200, {
-    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-    'X-Content-Type-Options': 'nosniff',
-    'Cache-Control': ext === '.html' || ext === '.json' ? 'no-cache' : 'public, max-age=3600'
-  });
-  if (request.method === 'HEAD') return response.end();
-  createReadStream(filePath).pipe(response);
+  if (request.method === 'HEAD') {
+    response.writeHead(200, {
+      'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+      'Content-Length': statSync(filePath).size,
+      'Accept-Ranges': 'bytes'
+    });
+    return response.end();
+  }
+  sendFileWithRange(request, response, filePath, mimeTypes[ext] || 'application/octet-stream');
 });
 
 server.listen(port, host, () => {

@@ -27,7 +27,24 @@ const countLabel = (count, singular, dual = null, plural = null) => {
 };
 const activityGlyph = { audio: '♫', read_aloud: '🔊', mcq: '✓', matching: '↔', text_answer: '✎', drawing: '✐' };
 const subjectList = () => lessonIndex?.subjects || [];
-const developerAccessEnabled = () => new URL(window.location.href).searchParams.get('developer') === '1';
+const developerAccessEnabled = () => {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('developer') !== '1') return false;
+  if (sessionStorage.getItem('ilp-developer-auth') === '1') return true;
+  if (document.referrer && document.referrer.includes('manage.html')) {
+    sessionStorage.setItem('ilp-developer-auth', '1');
+    return true;
+  }
+  const entered = window.prompt('هذه الصفحة مخصصة للمطور والمعلم فقط.\nأدخل كلمة مرور المطور لتفعيل استوديو التعديل:');
+  const secret = lessonIndex?.developerSecret || 'admin';
+  if (entered && entered.trim() === secret) {
+    sessionStorage.setItem('ilp-developer-auth', '1');
+    return true;
+  }
+  url.searchParams.delete('developer');
+  history.replaceState({}, '', url.href);
+  return false;
+};
 const lessonConfigKey = (lessonId) => `interactive-learning-config:${lessonId}`;
 const stripRuntimeLessonFields = (lesson) => {
   const { __lessonFile, __lessonUrl, __indexEntry, ...portable } = lesson || {};
@@ -716,9 +733,9 @@ async function refreshDownloadedStatus() {
 
 async function openActivity(activity, pageNumber) {
   if (!currentLesson || !currentViewer) return;
-  if (activity.type === 'matching' && ((activity.pairs || []).some((pair) => pair.position) || (activity.targets || []).some((target) => target.position))) {
+  if (activity.type === 'matching') {
     if (currentViewer.currentPage !== pageNumber) await currentViewer.goToPage(pageNumber);
-    toast('نفّذ التوصيل مباشرة فوق صفحة الكتاب: اضغط على الصورة أو الكلمة أولًا، ثم اضغط على المطابقة.');
+    toast('✏️ نشاط التوصيل: اضغط على الصورة أو الكلمة أولاً، ثم اضغط على النقطة المقابلة لتوصيل الخط بينهما.');
     return;
   }
   if (currentViewer.currentPage !== pageNumber) await currentViewer.goToPage(pageNumber);

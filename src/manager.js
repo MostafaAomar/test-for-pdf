@@ -423,6 +423,11 @@ function renderMaterialsList() {
     </article>`;
   }).join('');
   list.querySelectorAll('[data-delete-material]').forEach((button) => button.addEventListener('click', () => removeMaterial(button.dataset.deleteMaterial)));
+  list.querySelectorAll('a[href*="developer=1"]').forEach((link) => {
+    link.addEventListener('click', () => {
+      try { sessionStorage.setItem('ilp-developer-auth', '1'); } catch (_) {}
+    });
+  });
 }
 function removeMaterial(id) {
   const entry = catalog.lessons.find((item) => item.id === id);
