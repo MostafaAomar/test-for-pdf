@@ -26,10 +26,83 @@ function safelyResolve(urlPath) {
   return full === root || full.startsWith(`${root}${path.sep}`) ? full : null;
 }
 
+function normalizeDriveUrl(rawUrl) {
+  const str = String(rawUrl || '').trim();
+  const driveMatch = str.match(/\/file\/d\/([\w-]+)/i) || str.match(/[?&]id=([\w-]+)/i);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  }
+  return str;
+}
+
 const server = http.createServer((request, response) => {
+  const parsedUrl = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+  const pathname = parsedUrl.pathname;
+
+  // Proxy endpoint to bypass CORS for Google Drive and external files
+  if (pathname === '/api/proxy') {
+    const targetUrl = parsedUrl.searchParams.get('url');
+    if (!targetUrl) {
+      response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Missing url parameter');
+      return;
+    }
+    const directUrl = normalizeDriveUrl(targetUrl);
+    fetch(directUrl, { redirect: 'follow' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buffer = Buffer.from(await res.arrayBuffer());
+        const contentType = res.headers.get('content-type') || (targetUrl.includes('.pdf') ? 'application/pdf' : 'application/octet-stream');
+        response.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': buffer.length,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=86400'
+        });
+        response.end(buffer);
+      })
+      .catch((err) => {
+        response.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        response.end(`Failed to proxy file: ${err.message}`);
+      });
+    return;
+  }
+
   // Handle API requests from developer tools
   if (request.method === 'POST') {
-    const url = request.url.split('?')[0];
+    const url = pathname;
+
+    // Download remote file (e.g. Google Drive) directly to local lessons/uploads/
+    if (url === '/api/download-remote') {
+      let body = '';
+      request.on('data', (chunk) => { body += chunk; });
+      request.on('end', async () => {
+        try {
+          const { url: remoteUrl, fileName } = JSON.parse(body);
+          if (!remoteUrl) throw new Error('رابط الملف مطلوب');
+          const directUrl = normalizeDriveUrl(remoteUrl);
+          const res = await fetch(directUrl, { redirect: 'follow' });
+          if (!res.ok) throw new Error(`فشل تحميل الملف: HTTP ${res.status}`);
+          const buffer = Buffer.from(await res.arrayBuffer());
+
+          const uploadsDir = path.join(root, 'lessons', 'uploads');
+          if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
+
+          const safeName = (fileName || `remote-${Date.now()}`).replace(/[^\w.-]+/g, '_');
+          const ext = remoteUrl.toLowerCase().includes('.pdf') || buffer.slice(0, 5).toString().includes('%PDF') ? '.pdf' : '.mp3';
+          const finalName = safeName.endsWith(ext) ? safeName : `${safeName}${ext}`;
+          const filePath = path.join(uploadsDir, finalName);
+          writeFileSync(filePath, buffer);
+
+          response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ ok: true, localPath: `lessons/uploads/${finalName}` }));
+        } catch (err) {
+          response.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ ok: false, error: err.message }));
+        }
+      });
+      return;
+    }
 
     // 1. Save entire catalog (lessons/index.json)
     if (url === '/api/save-catalog') {

@@ -128,7 +128,13 @@ export function findLesson(index, query) {
 export function lessonAssetUrl(lesson, path) {
   const value = String(path ?? '');
   if (/^(data:|blob:)/i.test(value)) return value;
-  // Convert Google Drive sharing links to direct download links
+  const isLocalHost = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const isExternal = /^https?:\/\//i.test(value);
+  // If running on localhost and accessing external file (e.g. Google Drive), proxy to eliminate CORS errors completely
+  if (isExternal && isLocalHost) {
+    return `/api/proxy?url=${encodeURIComponent(value)}`;
+  }
+  // Convert Google Drive sharing links to direct download links for production
   const driveMatch = value.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/?#]+)/i);
   if (driveMatch) return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
   if (/^https?:/i.test(value)) return value;

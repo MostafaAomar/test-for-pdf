@@ -321,7 +321,24 @@ async function addMaterial(event) {
     );
 
     const lessonId = uniqueId(title, allLessonIds());
-    const pdfUrl = normalizeResourceUrl(pdfUrlInput);
+    let pdfUrl = normalizeResourceUrl(pdfUrlInput);
+
+    // If external URL (e.g. Google Drive), download to local uploads so it works 100% without CORS
+    if (/^https?:\/\//i.test(pdfUrl)) {
+      setFormMessage('جارٍ فحص وتنزيل ملف PDF محليًا…');
+      try {
+        const dlRes = await fetch('/api/download-remote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: pdfUrl, fileName: `${lessonId}-book.pdf` })
+        });
+        if (dlRes.ok) {
+          const dlData = await dlRes.json();
+          if (dlData.localPath) pdfUrl = dlData.localPath;
+        }
+      } catch (_) {}
+    }
+
     const allAudioUrls = audioUrls;
     attachHierarchy(hierarchy);
     const description = $('#lesson-description').value.trim() || `درس في ${localized(hierarchy.subject.title)} — ${title}`;
